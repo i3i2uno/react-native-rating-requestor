@@ -1,5 +1,6 @@
 import React, { Platform, Alert, Linking } from 'react-native';
 
+import * as StoreReview from 'react-native-store-review';
 import RatingsData from './RatingsData';
 
 const _config = {
@@ -68,18 +69,23 @@ export default class RatingRequestor {
 			'market://details?id=' + _config.appStoreId;
 
 		Alert.alert(
-			_config.title, 
-			_config.message, 
+			_config.title,
+			_config.message,
 			[
 				{ text: _config.actionLabels.decline, onPress: () => { RatingsData.recordDecline(); callback(true, 'decline'); } },
 				{ text: _config.actionLabels.delay, onPress: () => { callback(true, 'delay'); } },
-				{ text: _config.actionLabels.accept, onPress: () => { 
-					RatingsData.recordRated(); 
+				{ text: _config.actionLabels.accept, onPress: () => {
+					RatingsData.recordRated();
 					callback(true, 'accept');
-					Linking.openURL(storeUrl);
+					// This API is only available on iOS 10.3 or later
+					if (Platform.OS === 'ios' && StoreReview.isAvailable) {
+						StoreReview.requestReview();
+					} else {
+						Linking.openURL(storeUrl);
+					}
 				}, style: 'cancel' }
 			]
-		);	
+		);
 	}
 
 	/**
