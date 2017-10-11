@@ -15,6 +15,13 @@ class RatingsData {
 		this.initialize();
 	}
 
+	// Should only be used for debug purposes
+	async resetData() {
+		await AsyncStorage.removeItem(ratedTimestamp);
+		await AsyncStorage.removeItem(declinedTimestamp);
+		await AsyncStorage.setItem(eventCountKey, '0');
+	}
+
 	// Get current count of positive events
 	async getCount() {
 		try {

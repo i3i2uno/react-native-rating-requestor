@@ -56,6 +56,13 @@ export default class RatingRequestor {
 	}
 
 	/**
+	 * For debug purposes
+	 */
+	resetData() {
+		RatingsData.resetData();
+	}
+
+	/**
 	 * Shows the rating dialog when called. Normally called by `handlePositiveEvent()`, but
 	 * can be called on its own as well. Use caution when doing so--you don't want to ask
 	 * the user for a rating too frequently or you might annoy them. (This is handy, however,
