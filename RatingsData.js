@@ -4,6 +4,7 @@ const keyPrefix = '@RatingRequestData.';
 const eventCountKey = keyPrefix + 'positiveEventCount';
 const ratedTimestamp = keyPrefix + 'ratedTimestamp';
 const declinedTimestamp = keyPrefix + 'declinedTimestamp';
+const feedbackTimestamp = keyPrefix + 'feedbackTimestamp';
 
 /**
  * Private class that let's us interact with AsyncStorage on the device
@@ -19,6 +20,7 @@ class RatingsData {
 	async resetData() {
 		await AsyncStorage.removeItem(ratedTimestamp);
 		await AsyncStorage.removeItem(declinedTimestamp);
+		await AsyncStorage.removeItem(feedbackTimestamp);
 		await AsyncStorage.setItem(eventCountKey, '0');
 	}
 
@@ -46,7 +48,7 @@ class RatingsData {
 
 	async getActionTimestamps() {
 		try {
-			let timestamps = await AsyncStorage.multiGet([ratedTimestamp, declinedTimestamp]);
+			let timestamps = await AsyncStorage.multiGet([ratedTimestamp, declinedTimestamp, feedbackTimestamp]);
 
 			return timestamps;
 		} catch (ex) {
@@ -67,6 +69,14 @@ class RatingsData {
 			await AsyncStorage.setItem(ratedTimestamp, Date.now().toString());
 		} catch (ex) {
 			console.warn('Couldn\'t set rated timestamp.', ex);
+		}
+	}
+
+	async recordFeedback() {
+		try {
+			await AsyncStorage.setItem(feedbackTimestamp, Date.now().toString());
+		} catch (ex) {
+			console.warn('Couldn\'t set feedback timestamp.', ex);
 		}
 	}
 

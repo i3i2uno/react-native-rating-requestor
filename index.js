@@ -4,13 +4,20 @@ import * as StoreReview from 'react-native-store-review';
 import RatingsData from './RatingsData';
 
 const _config = {
-	title: 'Rate Me',
-	message: 'We hope you\'re loving our app. If you are, would you mind taking a quick moment to leave us a positive review?',
+	title: 'Share Your Feedback',
+	ratePrompt: 'Would you mind taking a quick moment to leave us a positive review?',
+	initialQuestion: 'Do you like this app?',
+	feedbackPrompt: 'Would you like to tell us about it?',
 	appStoreId: null,
+	feedbackLabels: {
+		yes: 'Yes',
+		no: 'No'
+	},
 	actionLabels: {
 		decline: 'Don\'t ask again',
 		delay: 'Maybe later...',
-		accept: 'Sure!'
+		feedback: 'Submit Feedback',
+		accept: 'Rate the App'
 	},
 	timingFunction: function(currentCount) {
 		return currentCount > 1 && (Math.log(currentCount) / Math.log(3)).toFixed(4) % 1 == 0;
@@ -35,11 +42,14 @@ export default class RatingRequestor {
 	 * @param  {object} options - Optional. Override the defaults. Takes the following shape, with all elements being optional:
 	 * 								{
 	 * 									title: {string},
-	 * 									message: {string},
+	 * 									ratePrompt: {string},
+	 * 									initialQuestion: {string},
+	 * 									feedbackPrompt: {string},
 	 * 									actionLabels: {
 	 * 										decline: {string},
 	 * 										delay: {string},
 	 * 										accept: {string}
+	 * 										feedback: {string}
 	 * 									},
 	 * 									timingFunction: {func}
 	 * 								}
@@ -62,35 +72,60 @@ export default class RatingRequestor {
 		RatingsData.resetData();
 	}
 
+	recordFeedback() {
+		RatingsData.recordFeedback();
+	}
+
 	/**
-	 * Shows the rating dialog when called. Normally called by `handlePositiveEvent()`, but
-	 * can be called on its own as well. Use caution when doing so--you don't want to ask
-	 * the user for a rating too frequently or you might annoy them. (This is handy, however,
-	 * if the user proactively seeks out something in your app to leave a rating, for example.)
-	 *
-	 * @param {function(didAppear: boolean, result: string)} callback Optional. Callback that reports whether the dialog appeared and what the result was.
+	 * Immediately invoke the store review
 	 */
-	showRatingDialog(callback = () => {}) {
+	storeReview(callback = () => {}) {
 		let storeUrl = Platform.OS === 'ios' ?
 			'http://itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=' + _config.appStoreId + '&pageNumber=0&sortOrdering=2&type=Purple+Software&mt=8' :
 			'market://details?id=' + _config.appStoreId;
 
+		RatingsData.recordRated();
+		callback(true, 'accept');
+
+		// This API is only available on iOS 10.3 or later
+		if (Platform.OS === 'ios' && StoreReview.isAvailable) {
+			StoreReview.requestReview();
+		} else {
+			Linking.openURL(storeUrl);
+		}
+	}
+
+	showFeedbackDialog(callback = () => {}) {
 		Alert.alert(
 			_config.title,
-			_config.message,
+			_config.feedbackPrompt,
 			[
 				{ text: _config.actionLabels.decline, onPress: () => { RatingsData.recordDecline(); callback(true, 'decline'); } },
 				{ text: _config.actionLabels.delay, onPress: () => { callback(true, 'delay'); } },
-				{ text: _config.actionLabels.accept, onPress: () => {
-					RatingsData.recordRated();
-					callback(true, 'accept');
-					// This API is only available on iOS 10.3 or later
-					if (Platform.OS === 'ios' && StoreReview.isAvailable) {
-						StoreReview.requestReview();
-					} else {
-						Linking.openURL(storeUrl);
-					}
-				}, style: 'cancel' }
+				{ text: _config.actionLabels.feedback, onPress: () => { callback(true, 'feedback'); }, style: 'cancel' }
+			]
+		);
+	}
+
+	showRatingDialog(callback = () => {}) {
+		Alert.alert(
+			_config.title,
+			_config.ratePrompt,
+			[
+				{ text: _config.actionLabels.decline, onPress: () => { RatingsData.recordDecline(); callback(true, 'decline'); } },
+				{ text: _config.actionLabels.delay, onPress: () => { callback(true, 'delay'); } },
+				{ text: _config.actionLabels.accept, onPress: () => this.storeReview(), style: 'cancel' }
+			]
+		);
+	}
+
+	showInitialDialog(callback = () => {}) {
+		Alert.alert(
+			_config.title,
+			_config.initialQuestion,
+			[
+				{ text: _config.feedbackLabels.no, onPress: () => this.showFeedbackDialog(callback) },
+				{ text: _config.feedbackLabels.yes, onPress: () => this.showRatingDialog(callback), style: 'cancel' }
 			]
 		);
 	}
@@ -106,7 +141,7 @@ export default class RatingRequestor {
 			let currentCount = await RatingsData.incrementCount();
 
 			if (_config.timingFunction(currentCount)) {
-				this.showRatingDialog(callback);
+				this.showInitialDialog(callback);
 			} else callback(false);
 		} else callback(false);
 	}
